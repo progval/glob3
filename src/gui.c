@@ -101,7 +101,7 @@ void gui_draw(struct Game *game, struct Player *player) {
     }
     
     // Draw rectangle on the minimap
-    surface = SDL_CreateRGBSurface(SDL_HWSURFACE, ceil(minimap_element_size), ceil(minimap_element_size), 32, 0, 0, 0, 0);
+    surface = SDL_CreateRGBSurface(SDL_HWSURFACE, min(1, floor(minimap_element_size)), min(1, floor(minimap_element_size)), 32, 0, 0, 0, 0);
     SDL_FillRect(surface, NULL, SDL_MapRGB(gui->screen->format, 0, 0, 0));
     for (minimap_coord.x=minimap_camera_corner1_x; minimap_coord.x<=minimap_camera_corner2_x; minimap_coord.x++) {
         minimap_coord.y = minimap_camera_corner1_y;
@@ -128,7 +128,7 @@ struct Gui* gui_init(int size_x, int size_y, int menu_width) {
         struct Gui *gui = malloc(sizeof(struct Gui));
         gui->size_x = size_x;
         gui->size_y = size_y;
-        gui->menu_width = menu_width;
+        gui->menu_width = menu_width - ((size_x-menu_width-GUI_MINIMAP_MARGIN) % GUI_TERRAIN_BORDER);
         gui->screen = SDL_SetVideoMode(size_x, size_y, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
         gui->camera = malloc(sizeof(struct GuiCamera));
         SDL_WM_SetCaption("Globulation 3", NULL);
