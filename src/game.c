@@ -16,11 +16,26 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/** 
+ * \file game.c
+ * \brief Main game loop and events handling
+ *
+ * This file is a node for everything else: it contains the main loop and
+ * calls callback when needed.
+ *
+ */
+
 #include <assert.h>
 #include <stdlib.h>
 #include "callbacks.h"
 #include "game.h"
 #include "player.h"
+
+/**
+ * \brief Main loop.
+ *
+ * \param game pointer to the game settings.
+ */
 
 void game_run(struct Game *game) {
     assert(game->state == NOT_STARTED);
@@ -41,6 +56,12 @@ void game_run(struct Game *game) {
         if (players->player->callbacks->game_end)
             players->player->callbacks->game_end(game, players->player);
 }
+
+/**
+ * \brief Free the resources used by the game settings.
+ *
+ * \param game pointer to the game settings.
+ */
 
 void game_free(struct Game *game) {
     struct PlayerList *players;

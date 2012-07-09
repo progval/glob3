@@ -16,6 +16,13 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/**
+ * \file log.c
+ * \brief Logging.
+ *
+ * Implements an easy-to-use and unified logging system. 
+ */
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -26,6 +33,12 @@ enum log_level LOG_LEVEL=LOG_DEBUG;
 
 const char* log_level_verbose[5] = {"debug", "info", "warning", "error", "critical"};
 
+/**
+ * \brief Set the log level from a user-friendly name. Useful for
+ * command-line parsing.
+ * \param level A user-friendly verbosity level.
+ * \return Whether the level is valid (true) or not (false).
+ */
 bool log_set_level_from_verbose(char* level) {
     for (int i=LOG_DEBUG; i<LOG_CRITICAL; i++) {
         if (strcmp(log_level_verbose[i], level)==0) {
@@ -36,6 +49,14 @@ bool log_set_level_from_verbose(char* level) {
     return false;
 }
 
+/**
+ * \brief Log a message.
+ * \param level_code The importance of this message.
+ * \param component The component of the software sending this message
+ * \param parts The numbers of parts of the message.
+ * \param ... char arrays. Parts of the message that will be displayed.
+ * This is a shortcut that allows to bypass calls to sprintf.
+ */
 void log_msg(enum log_level level_code, char* component, int parts, ...) {
     va_list args;
     char *part;

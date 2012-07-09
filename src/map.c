@@ -16,10 +16,23 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/**
+ * \file map.c
+ * \brief Handle map-related stuff.
+ */
+
 #include <stdlib.h>
 #include "utils.h"
 #include "map.h"
 
+/**
+ * \brief Create a simple map, for debugging purposes.
+ * \param size_x Width of the map.
+ * \param size_y Height of the map.
+ *
+ * Creates a simple map, filled with grass, a square of water in the middle,
+ * and a terrain of each type in the top left corner.
+ */
 struct Map* map_create_simple_map(coordinate size_x, coordinate size_y) {
     // Creates a simple map, with grass and a square of water.
     struct Map* map = malloc(sizeof(struct Map));
@@ -44,6 +57,9 @@ struct Map* map_create_simple_map(coordinate size_x, coordinate size_y) {
     return map;
 }
 
+/**
+ * \brief Free resources used by a map instance.
+ */
 void map_free(struct Map *map) {
     if (map) {
         free(map->terrain);

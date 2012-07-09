@@ -16,6 +16,11 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/** 
+ * \file building.h
+ * \brief building.c headers.
+ */
+
 #ifndef __BUILDING_H__
 #define __BUILDING_H__
 

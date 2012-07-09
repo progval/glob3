@@ -16,6 +16,11 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/** 
+ * \file map.h
+ * \brief map.c headers.
+ */
+
 #ifndef __MAP_H__
 #define __MAP_H__
 
@@ -23,12 +28,18 @@
 #include "building.h"
 #include "protocol.h"
 
+/**
+ * \brief Available terrain types.
+ */
 enum TerrainType {
     GRASS, WHEAT, FOREST, STONE,
     WATER, ALGAE,
     UNKNOWN_TERRAIN,
 };
 
+/**
+ * \brief Represents the map of a game.
+ */
 struct Map {
     coordinate size_x, size_y;
     enum TerrainType *terrain; // two-dimensional array.

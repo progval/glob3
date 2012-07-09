@@ -16,20 +16,41 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/** 
+ * \file player.h
+ * \brief player.c headers.
+ */
+
 #ifndef __PLAYER_H__
 #define __PLAYER_H__
 
 #include "protocol.h"
 #include "callbacks.h"
 
+/**
+ * \brief Available player types.
+ */
 enum PlayerType {
     HUMAN, AI,
     UNKNOWN_PLAYER,
 };
 
+/**
+ * Container for game callbacks.
+ * \see game_run
+ */
 struct PlayerCallbacks {
+    /**
+     * \see gui_on_game_start
+     */
     cb_game_start game_start;
+    /**
+     * \see gui_on_game_tick
+     */
     cb_game_tick game_tick;
+    /**
+     * \see gui_on_game_end
+     */
     cb_game_end game_end;
     cb_map_change map_change;
     cb_unit_die unit_die;

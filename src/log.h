@@ -16,6 +16,11 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/** 
+ * \file log.h
+ * \brief log.c headers.
+ */
+
 #ifndef __LOG_H__
 #define __LOG_H__
 

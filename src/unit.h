@@ -16,6 +16,11 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/** 
+ * \file unit.h
+ * \brief unit.c headers.
+ */
+
 #ifndef __UNIT_H__
 #define __UNIT_H__
 

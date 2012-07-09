@@ -16,6 +16,11 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/**
+ * \file os_posix.c
+ * \brief Implements os.h function for POSIX-compliant systems.
+ */
+
 #ifndef _WIN32
 
 #include "os.h"

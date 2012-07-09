@@ -16,6 +16,11 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/** 
+ * \file game.h
+ * \brief game.c headers.
+ */
+
 #ifndef __GAME_H__
 #define __GAME_H__
 
@@ -23,6 +28,9 @@
 #include "map.h"
 #include "player.h"
 
+/**
+ * \brief Different possible states for the game.
+ */
 enum GameState {
     NOT_STARTED, INITIALIZING, SYNCING, TICKING, ENDING,
 };

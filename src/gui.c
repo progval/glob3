@@ -16,6 +16,14 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/**
+ * \file gui.c
+ * \brief Graphical user interface.
+ *
+ * This file handles the main game interface, shown to the player.
+ * Depends on the SDL.
+ */
+
 #include <assert.h>
 #include <SDL/SDL.h>
 #include <math.h>
@@ -25,6 +33,13 @@
 #include "map.h"
 #include "gui.h"
 #include "log.h"
+
+/**
+ * \brief Return the SDL color matching the terrain.
+ * \param format The SDL color format. Usually accessible via screen->format.
+ * \param terrain The terrain type, as stored in the map.
+ * \return An SDL color.
+ */
 
 Uint32 gui_get_terrain_color(SDL_PixelFormat *format, enum TerrainType terrain) {
     char *type = malloc(sizeof(enum TerrainType)*2);
@@ -43,13 +58,32 @@ Uint32 gui_get_terrain_color(SDL_PixelFormat *format, enum TerrainType terrain) 
     }
 }
 
+/**
+ * \brief Shortcut for getting the camera width.
+ * \param gui The gui the camera belongs to.
+ * \return Width of the camera, as a number of terrain elements.
+ * \see gui_get_camera_height
+ */
+
 float gui_get_camera_width(struct Gui *gui) {
     return ((float) gui->size_x - gui->menu_width)/GUI_TERRAIN_BORDER;
 }
+
+/**
+ * \brief Shortcut for getting the camera height.
+ * \param gui The gui the camera belongs to.
+ * \return Height of the camera, as a number of terrain elements.
+ * \see gui_get_camera_width
+ */
 float gui_get_camera_height(struct Gui *gui) {
     return ((float) gui->size_y)/GUI_TERRAIN_BORDER;
 }
 
+/**
+ * \brief (Re)draw the entire interface.
+ * \param game The game instance.
+ * \param player The player who is using this gui instance.
+ */
 void gui_draw(struct Game *game, struct Player *player) {
     // Redraw the entire camera (view + minimap)
     struct Gui* gui = (struct Gui*) player->handler;
@@ -67,8 +101,8 @@ void gui_draw(struct Game *game, struct Player *player) {
     const int minimap_corner1_y = GUI_MINIMAP_MARGIN;
     const int minimap_camera_corner1_x = minimap_corner1_x + gui->camera->x*minimap_element_size;
     const int minimap_camera_corner1_y = minimap_corner1_y + gui->camera->y*minimap_element_size;
-    const int minimap_camera_corner2_x = minimap_camera_corner1_x + (((float) (gui->size_x - gui->menu_width))/GUI_TERRAIN_BORDER)*minimap_element_size;
-    const int minimap_camera_corner2_y = minimap_camera_corner1_y + (((float) gui->size_y)/GUI_TERRAIN_BORDER)*minimap_element_size;
+    const int minimap_camera_corner2_x = minimap_camera_corner1_x + gui_get_camera_width(gui)*minimap_element_size;
+    const int minimap_camera_corner2_y = minimap_camera_corner1_y + gui_get_camera_height(gui)*minimap_element_size;
 
     // Draw the camera and the minimap
     for (int x=0; x<(game->map->size_x); x++) {
@@ -120,6 +154,13 @@ void gui_draw(struct Game *game, struct Player *player) {
     SDL_Flip(gui->screen);
 }
 
+/**
+ * \brief Initialize the user interface.
+ * \param size_x Width of the window.
+ * \param size_y Height of the window.
+ * \param menu_width Width of the right menu.
+ * \return A gui instance.
+ */
 struct Gui* gui_init(int size_x, int size_y, int menu_width) {
     if (SDL_Init(SDL_INIT_VIDEO) == -1)
         log_msg(LOG_WARNING, "gui", 2, "SDL error: ", SDL_GetError());
@@ -137,12 +178,27 @@ struct Gui* gui_init(int size_x, int size_y, int menu_width) {
     }
 }
 
+/**
+ * \brief Callback for the game start.
+ * \param game The game instance
+ * \param player The player who is using this gui instance.
+ * \see game_run
+ * \see PlayerCallbacks
+ */
 void gui_on_game_start(struct Game *game, struct Player *player) {
     log_msg(LOG_DEBUG, "gui", 1, "Game started.");
     struct Gui* gui = (struct Gui*) player->handler;
     gui_draw(game, player);
     log_msg(LOG_DEBUG, "gui", 1, "Map drawn.");
 }
+
+/**
+ * \brief Callback on a game tick.
+ * \param game The game instance
+ * \param player The player who is using this gui instance.
+ * \see game_run
+ * \see PlayerCallbacks
+ */
 void gui_on_game_tick(struct Game *game, struct Player *player) {
     struct Gui* gui = (struct Gui*) player->handler;
     assert(game->state == TICKING);
@@ -177,11 +233,22 @@ void gui_on_game_tick(struct Game *game, struct Player *player) {
         }
     }
 }
+/**
+ * \brief Callback for the game end.
+ * \param game The game instance
+ * \param player The player who is using this gui instance.
+ * \see game_run
+ * \see PlayerCallbacks
+ */
 void gui_on_game_end(struct Game *game, struct Player *player) {
     struct Gui* gui = (struct Gui*) player->handler;
     log_msg(LOG_DEBUG, "gui", 1, "Game ended.");
 }
 
+/**
+ * \brief Free the resources uses by the gui instance, and exists the SDL.
+ * \param gui The gui instance.
+ */
 void gui_free(struct Gui *gui) {
     free(gui);
     SDL_Quit();

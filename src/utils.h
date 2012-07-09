@@ -16,6 +16,11 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/**
+ * \file utils.h
+ * \brief Utilities.
+ */
+
 #ifndef __UTILS_H__
 #define __UTILS_H__
 

@@ -16,6 +16,11 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/**
+ * \file main.c
+ * \brief Starting point of the program.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>

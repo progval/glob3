@@ -16,6 +16,11 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/**
+ * \file protocol.h
+ * \brief Serialialization-related constants.
+ */
+
 #ifndef __PROTOCOL_H__
 #define __PROTOCOL_H__
 

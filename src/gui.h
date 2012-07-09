@@ -16,6 +16,11 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/** 
+ * \file gui.h
+ * \brief gui.c headers.
+ */
+
 #ifndef __GUI_H__
 #define __GUI_H__
 
@@ -25,14 +30,30 @@
 #define GUI_TERRAIN_BORDER 32
 #define GUI_MINIMAP_MARGIN 10
 
+/**
+ * \brief Different possible modes.
+ */
 enum GuiMode {
     MAIN_MENU, IN_GAME
 };
 
+/**
+ * \brief Represents the area viewed by the player.
+ *
+ * Only the top left border coordinates are needed, because the width and 
+ * the height are automatically computed from the gui settings.
+ * \see gui_get_camera_height
+ * \see gui_get_camera_width
+ */
 struct GuiCamera {
     coordinate x, y;
 };
 
+/**
+ * \brief Represents the graphical user interface.
+ * \see gui_init
+ * \see gui_free
+ */
 struct Gui {
     enum GuiMode mode;
     int size_x, size_y, menu_width;

@@ -16,6 +16,13 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+/**
+ * \file os.h
+ * \brief Headers of os abstraction functions.
+ *
+ * \seen os_prosix.c
+ */
+
 #ifndef __OS_H__
 #define __OS_H__
 

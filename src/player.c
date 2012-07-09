@@ -16,10 +16,18 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <stdlib.h>
+/**
+ * \file player.c
+ * \brief Handle player-related stuff.
+ */
 
+#include <stdlib.h>
 #include "player.h"
 
+/**
+ * \brief Free the resources uses by the player instance.
+ * \param gui The player instance.
+ */
 void player_free(struct Player *player) {
     free(player->callbacks);
     free(player);
