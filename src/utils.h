@@ -18,7 +18,7 @@
 
 /**
  * \file utils.h
- * \brief Utilities.
+ * \brief utils.c headers.
  */
 
 #ifndef __UTILS_H__
@@ -26,5 +26,8 @@
 
 #define max(a,b) (a>=b?a:b)
 #define min(a,b) (a<=b?a:b)
+
+char* strcat_realloc(const char *str1, const char *str2);
+char* strcat_realloc_free(char *str1, const char *str2);
 
 #endif

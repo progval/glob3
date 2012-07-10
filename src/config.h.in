@@ -2,5 +2,5 @@
 #define WITH_NET @build_net@
 #define WITH_SERVER @build_server@
 #define WITH_CLIENT @build_client@
-#define PREFIX @CMAKE_INSTALL_PREFIX@
-#define RESOURCES_PREFIX @resources_prefix@
+#define PREFIX "@CMAKE_INSTALL_PREFIX@"
+#define RESOURCES_PREFIX "@resources_prefix@"

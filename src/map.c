@@ -38,22 +38,27 @@ struct Map* map_create_simple_map(coordinate size_x, coordinate size_y) {
     struct Map* map = malloc(sizeof(struct Map));
     map->size_x = size_x;
     map->size_y = size_y;
-    map->terrain = malloc(sizeof(enum TerrainType)*size_x*size_y);
+    map->terrain = malloc(sizeof(struct Terrain)*size_x*size_y);
     int middle_x = size_x/2, middle_y = size_y/2;
     int half_square_border = (size_x < size_y) ? size_x/6 : size_y/6;
-    enum TerrainType *cell = map->terrain;
+    struct Terrain *cell = map->terrain;
     for (int x=0; x<size_x; x++) {
         for (int y=0; y<size_y; y++) {
-            if (x < UNKNOWN_TERRAIN && y == 0)
-                *cell = x;
-            else if (max(abs(x-middle_x), abs(y-middle_y)) <= half_square_border)
+            if (max(abs(x-middle_x), abs(y-middle_y)) <= half_square_border)
                 // On the border of the square
-                *cell = WATER;
+                cell->type = WATER;
             else
-                *cell = GRASS;
-            cell += 1; // Increments cell of sizeof(enum TerrainType)
+                cell->type = GRASS;
+            cell->resource = NO_RESOURCE;
+            cell += 1; // Increments cell of sizeof(struct Terrain)
         }
     }
+    map->terrain[1].resource = WHEAT;
+    map->terrain[2].resource = WOOD;
+    map->terrain[3].resource = STONE;
+    map->terrain[4].type = WATER;
+    map->terrain[5].type = WATER;
+    map->terrain[5].resource = ALGAE;
     return map;
 }
 

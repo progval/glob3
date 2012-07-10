@@ -12,7 +12,7 @@ set(build_server 0)
 set(build_client 0)
 
 if ((NOT build_gui) AND (NOT build_server))
-
+    message(FATAL_ERROR "Nothing to build!")
 endif ((NOT build_gui) AND (NOT build_server))
 
 set(PROJECT_ROOT_DIR "${PROJECT_SOURCE_DIR}")
@@ -28,15 +28,29 @@ include_directories("${PROJECT_BINARY_DIR}")
 ##############################
 # Global libraries
 
-find_package (SDL REQUIRED)
-include_directories(${SDL_INCLUDE_DIRS})
-set(LIBS ${LIBS} ${LIBSDL_LIBRARIES})
+if (build_gui)
+    find_package (SDL REQUIRED)
+    find_package (SDL_image REQUIRED)
+    if (NOT SDL_FOUND)
+        message(FATAL_ERROR "SDL not found!")
+    endif (NOT SDL_FOUND)
+    include_directories(${SDL_INCLUDE_DIRS})
+    include_directories(${SDL_INCLUDE_DIRS}/SDL)
+    set(LIBS ${LIBS} ${LIBSDL_LIBRARIES})
+endif (build_gui)
 
 
 ##############################
 # Local libraries
 
 add_library(log src/log.c)
+
+add_library(utils src/utils.c)
+
+if (UNIX OR APPLE)
+    add_library(os src/os_posix.c)
+endif (UNIX OR APPLE)
+target_link_libraries(os utils)
 
 add_library(player src/player.c)
 
@@ -52,8 +66,11 @@ target_link_libraries(map unit building)
 add_library(game src/game.c)
 target_link_libraries(game map player unit building)
 
+add_library(graphics src/graphics.c)
+target_link_libraries(graphics utils)
+
 add_library(gui src/gui.c)
-target_link_libraries(gui ${SDL_LIBRARY})
+target_link_libraries(gui graphics os ${SDL_LIBRARY} ${SDLIMAGE_LIBRARY})
 
 
 ##############################

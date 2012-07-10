@@ -23,16 +23,23 @@
 
 #ifndef _WIN32
 
+#include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
 #include "os.h"
+#include "utils.h"
 
 char* os_path_join(int parts, ...) {
-    char path[] = "";
+    size_t size;
     va_list args;
     va_start(args, parts);
-    strcat(path, va_arg(args, char*));
-    for (int i=0; i<parts; i++) {
-        strcat(path, "/");
-        strcat(path, va_arg(args, char*));
+    char *path = va_arg(args, char*);
+    char *part;
+    for (int i=1; i<parts; i++) {
+        part = va_arg(args, char*);
+        // FIXME: Memory leaks here
+        path = strcat_realloc(path, "/");
+        path = strcat_realloc(path, part);
     }
     va_end(args);
     return path;
@@ -41,6 +48,5 @@ char* os_path_join(int parts, ...) {
 char* os_get_config_root() {
     return "~/.config/glob3/";
 }
-
 
 #endif

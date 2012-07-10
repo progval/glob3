@@ -25,14 +25,21 @@
  */
 
 #include <assert.h>
+#include <SDL/SDL_image.h>
 #include <SDL/SDL.h>
 #include <math.h>
+#include "graphics.h"
 #include "player.h"
+#include "config.h"
 #include "utils.h"
 #include "game.h"
 #include "map.h"
 #include "gui.h"
 #include "log.h"
+#include "os.h"
+
+SDL_Surface* gui_terrain_backgrounds_cache[UNKNOWN_TERRAIN_TYPE];
+SDL_Surface* gui_terrain_foregrounds_cache[UNKNOWN_RESOURCE];
 
 /**
  * \brief Return the SDL color matching the terrain.
@@ -41,21 +48,61 @@
  * \return An SDL color.
  */
 
-Uint32 gui_get_terrain_color(SDL_PixelFormat *format, enum TerrainType terrain) {
-    char *type = malloc(sizeof(enum TerrainType)*2);
-    switch(terrain) {
-        case GRASS:  return SDL_MapRGB(format,  20, 200, 100);
+Uint32 gui_get_terrain_color(SDL_PixelFormat *format, struct Terrain terrain) {
+    char *type;
+    switch (terrain.resource) {
         case WHEAT:  return SDL_MapRGB(format, 200, 200,   0);
-        case FOREST: return SDL_MapRGB(format,   0, 200,   0);
+        case WOOD:   return SDL_MapRGB(format,   0, 200,   0);
         case STONE:  return SDL_MapRGB(format, 100, 100, 100);
-        case WATER:  return SDL_MapRGB(format,   0,   0, 200);
         case ALGAE:  return SDL_MapRGB(format,   0, 100,  70);
+        case NO_RESOURCE:
+            switch(terrain.type) {
+                case GRASS:  return SDL_MapRGB(format,  20, 200, 100);
+                case WATER:  return SDL_MapRGB(format,   0,   0, 200);
+            }
         default:
+            type = malloc(sizeof(enum TerrainType)*2);
             sprintf(type, "%x", terrain);
             log_msg(LOG_WARNING, "gui", 2, "Asking for color of unknown terrain type: 0x", type);
             free(type);
             return SDL_MapRGB(format, 0, 0, 0);
     }
+}
+
+SDL_Surface* gui_get_terrain_background(SDL_PixelFormat *format, struct Terrain terrain, coordinate x, coordinate y) {
+    if (gui_terrain_backgrounds_cache[terrain.type])
+        return gui_terrain_backgrounds_cache[terrain.type];
+    char *resource = graphics_get_resource_name(TERRAIN, terrain.type, 0, 0);
+    assert(resource != NULL);
+    resource = strcat_realloc(resource, ".png");
+    char *path = os_path_join(3, RESOURCES_PREFIX, "graphics", resource);
+    SDL_Surface *surface = IMG_Load(path);
+    if (!surface)
+        log_msg(LOG_ERROR, "gui", 2, "Failed to load resource ", path);
+    free(resource);
+    free(path);
+    gui_terrain_backgrounds_cache[terrain.type] = surface;
+    return surface;
+        
+}
+
+SDL_Surface* gui_get_terrain_foreground(SDL_PixelFormat *format, struct Terrain terrain) {
+    if (terrain.resource == NO_RESOURCE)
+        return NULL;
+    if (gui_terrain_foregrounds_cache[terrain.resource])
+        return gui_terrain_foregrounds_cache[terrain.resource];
+    char *resource;
+    resource = graphics_get_resource_name(RESOURCE, terrain.resource, 0, 0);
+    resource = strcat_realloc(resource, ".png");
+    char *path = os_path_join(3, RESOURCES_PREFIX, "graphics", resource);
+    SDL_Surface *surface = IMG_Load(path);
+    if (!surface)
+        log_msg(LOG_ERROR, "gui", 2, "Failed to load resource ", path);
+    free(resource);
+    free(path);
+    gui_terrain_foregrounds_cache[terrain.resource] = surface;
+    return surface;
+        
 }
 
 /**
@@ -88,9 +135,9 @@ void gui_draw(struct Game *game, struct Player *player) {
     // Redraw the entire camera (view + minimap)
     struct Gui* gui = (struct Gui*) player->handler;
     SDL_Rect coord, minimap_coord, minimap_rectangle;
-    SDL_Surface *surface;
+    SDL_Surface *surface, *background, *foreground;
     Uint32 color;
-    enum TerrainType *cell = game->map->terrain;
+    struct Terrain *cell = game->map->terrain;
     int relative_x, relative_y;
 
     // Some handy pre-computed values
@@ -115,13 +162,15 @@ void gui_draw(struct Game *game, struct Player *player) {
             // Draw on camera
             relative_y = y - gui->camera->y;
             coord.y = relative_y*GUI_TERRAIN_BORDER;
-            surface = SDL_CreateRGBSurface(SDL_HWSURFACE, GUI_TERRAIN_BORDER, GUI_TERRAIN_BORDER, 32, 0, 0, 0, 0);
-            SDL_FillRect(surface, NULL, color);
             if (relative_x >= 0 && coord.x+GUI_TERRAIN_BORDER < gui->size_x-gui->menu_width && relative_y >= 0 && coord.y+GUI_TERRAIN_BORDER < gui->size_x) {
                 // Display only if needed.
-                SDL_BlitSurface(surface, NULL, gui->screen, &coord);
+                background = gui_get_terrain_background(gui->screen->format, *cell, x, y);
+                SDL_BlitSurface(background, NULL, gui->screen, &coord);
+                foreground = gui_get_terrain_foreground(gui->screen->format, *cell);
+                if (foreground)
+                    SDL_BlitSurface(foreground, NULL, gui->screen, &coord);
+                // Do not free the surface, they cached.
             }
-            SDL_FreeSurface(surface);
 
             // Draw on minimap
             minimap_coord.y = GUI_MINIMAP_MARGIN + y*minimap_element_size;
@@ -174,6 +223,8 @@ struct Gui* gui_init(int size_x, int size_y, int menu_width) {
         gui->camera = malloc(sizeof(struct GuiCamera));
         SDL_WM_SetCaption("Globulation 3", NULL);
         SDL_EnableKeyRepeat(25, 25);
+        memset(gui_terrain_backgrounds_cache, 0, sizeof(SDL_Surface*)*UNKNOWN_TERRAIN_TYPE);
+        memset(gui_terrain_foregrounds_cache, 0, sizeof(SDL_Surface*)*UNKNOWN_RESOURCE);
         return gui;
     }
 }
@@ -250,6 +301,7 @@ void gui_on_game_end(struct Game *game, struct Player *player) {
  * \param gui The gui instance.
  */
 void gui_free(struct Gui *gui) {
+    free(gui->camera);
     free(gui);
     SDL_Quit();
     log_msg(LOG_DEBUG, "gui", 1, "SDL unloaded.");

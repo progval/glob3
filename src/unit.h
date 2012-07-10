@@ -24,6 +24,8 @@
 #ifndef __UNIT_H__
 #define __UNIT_H__
 
+#include <stdint.h>
+
 typedef uint8_t unit_level;
 typedef uint8_t unit_hungry;
 

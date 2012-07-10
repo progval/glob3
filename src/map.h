@@ -32,9 +32,16 @@
  * \brief Available terrain types.
  */
 enum TerrainType {
-    GRASS, WHEAT, FOREST, STONE,
-    WATER, ALGAE,
-    UNKNOWN_TERRAIN,
+    GRASS, WATER, UNKNOWN_TERRAIN_TYPE,
+};
+
+enum Resource {
+    NO_RESOURCE, WHEAT, WOOD, STONE, ALGAE, UNKNOWN_RESOURCE,
+};
+
+struct Terrain {
+    enum TerrainType type;
+    enum Resource resource;
 };
 
 /**
@@ -42,8 +49,8 @@ enum TerrainType {
  */
 struct Map {
     coordinate size_x, size_y;
-    enum TerrainType *terrain; // two-dimensional array.
-    struct BuildingList buildings[UNKNOWN_TERRAIN];
+    struct Terrain *terrain; // two-dimensional array.
+    struct BuildingList buildings[UNKNOWN_TERRAIN_TYPE];
 };
 
 struct Map* map_create_simple_map(coordinate size_x, coordinate size_y);

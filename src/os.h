@@ -26,12 +26,6 @@
 #ifndef __OS_H__
 #define __OS_H__
 
-#ifdef _WIN32
-#include "os_win32.h"
-#else
-#include "os_posix.h"
-#endif
-
 char* os_path_join(int parts, ...);
 char* os_get_config_root();
 
