@@ -29,5 +29,6 @@
 
 char* strcat_realloc(const char *str1, const char *str2);
 char* strcat_realloc_free(char *str1, const char *str2);
+int randmax(int upperbound);
 
 #endif

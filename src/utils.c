@@ -35,8 +35,25 @@ char* strcat_realloc(const char *str1, const char *str2) {
     return newstr;
 }
 
+/**
+ * \brief Variant of strcat_realloc that frees the first parameter.
+ */
 char* strcat_realloc_free(char *str1, const char *str2) {
     char *result = strcat_realloc(str1, str2);
     free(str1);
     return result;
+}
+
+/**
+ * \brief Wrapper arround rand() that selects only values between 0 (included)
+ * and the upper bound (excluded).
+ */
+int randmax(int upperbound) {
+    // Greater multiple of maximum that is lesser than RAND_MAX
+    int greater_multiple = RAND_MAX - (RAND_MAX%upperbound);
+    int result;
+    do {
+        result = rand();
+    } while (result >= greater_multiple); // Otherwise, lower numbers are more likely to be returned
+    return result % upperbound;
 }

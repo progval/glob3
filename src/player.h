@@ -41,20 +41,32 @@ enum PlayerType {
  */
 struct PlayerCallbacks {
     /**
+     * \see cb_game_start
      * \see gui_on_game_start
      */
-    cb_game_start game_start;
+    struct CallbackList *game_start;
     /**
+     * \see cb_game_tick
      * \see gui_on_game_tick
      */
-    cb_game_tick game_tick;
+    struct CallbackList *game_tick;
     /**
+     * \see cb_game_end
      * \see gui_on_game_end
      */
-    cb_game_end game_end;
-    cb_map_change map_change;
-    cb_unit_die unit_die;
-    cb_unit_spawn unit_spawn;
+    struct CallbackList *game_end;
+    /**
+     * \see cb_map_change
+     */
+    struct CallbackList *map_change;
+    /**
+     * \see cb_unit_die
+     */
+    struct CallbackList *unit_die;
+    /**
+     * \see cb_unit_spawn
+     */
+    struct CallbackList *unit_spawn;
 };
 
 struct Player {

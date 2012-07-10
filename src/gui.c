@@ -39,7 +39,7 @@
 #include "os.h"
 
 SDL_Surface* gui_terrain_backgrounds_cache[UNKNOWN_TERRAIN_TYPE][4][4];
-SDL_Surface* gui_terrain_foregrounds_cache[UNKNOWN_RESOURCE];
+SDL_Surface* gui_terrain_foregrounds_cache[UNKNOWN_RESOURCE][MAX_TERRAIN_RESOURCES+1];
 
 /**
  * \brief Return the SDL color matching the terrain.
@@ -52,9 +52,9 @@ Uint32 gui_get_terrain_color(SDL_PixelFormat *format, struct Terrain terrain) {
     char *type;
     switch (terrain.resource) {
         case WHEAT:  return SDL_MapRGB(format, 200, 200,   0);
-        case WOOD:   return SDL_MapRGB(format,   0, 200,   0);
+        case WOOD:   return SDL_MapRGB(format,   0, 100,   0);
         case STONE:  return SDL_MapRGB(format, 100, 100, 100);
-        case ALGAE:  return SDL_MapRGB(format,   0, 100,  70);
+        case ALGAE:  return SDL_MapRGB(format,  50, 100,  70);
         case NO_RESOURCE:
             switch(terrain.type) {
                 case GRASS:  return SDL_MapRGB(format,  20, 200, 100);
@@ -69,6 +69,14 @@ Uint32 gui_get_terrain_color(SDL_PixelFormat *format, struct Terrain terrain) {
     }
 }
 
+/**
+ * \brief Get a sprite of the background of the given terrain.
+ * \param format Usually accessible via screen->format
+ * \param terrain The terrain you want the sprite.
+ * \param x,y Coordinates of the terrain. Used for variants and surface smoothing.
+ * \return The sprite.
+ * \see gui_get_terrain_foreground.
+ */
 SDL_Surface* gui_get_terrain_background(SDL_PixelFormat *format, struct Terrain terrain, coordinate x, coordinate y) {
     if (gui_terrain_backgrounds_cache[terrain.type][x%4][y%4])
         return gui_terrain_backgrounds_cache[terrain.type][x%4][y%4];
@@ -86,21 +94,35 @@ SDL_Surface* gui_get_terrain_background(SDL_PixelFormat *format, struct Terrain 
         
 }
 
+/**
+ * \brief Get a sprite of the foreground of the given terrain.
+ * \param format Usually accessible via screen->format
+ * \param terrain The terrain you want the sprite.
+ * \return The sprite.
+ * \see gui_get_terrain_background.
+ */
 SDL_Surface* gui_get_terrain_foreground(SDL_PixelFormat *format, struct Terrain terrain) {
     if (terrain.resource == NO_RESOURCE)
         return NULL;
-    if (gui_terrain_foregrounds_cache[terrain.resource])
-        return gui_terrain_foregrounds_cache[terrain.resource];
+    if (gui_terrain_foregrounds_cache[terrain.resource][terrain.resource_amount])
+        return gui_terrain_foregrounds_cache[terrain.resource][terrain.resource_amount];
     char *resource;
-    resource = graphics_get_resource_name(RESOURCE, terrain.resource, 0, 0);
+    int variant;
+    if (terrain.resource == WHEAT || terrain.resource == WOOD || terrain.resource == STONE || terrain.resource == ALGAE)
+        variant = terrain.resource_amount-1;
+    else
+        variant = 0;
+    resource = graphics_get_resource_name(RESOURCE, terrain.resource, 0, variant);
     resource = strcat_realloc(resource, ".png");
     char *path = os_path_join(3, RESOURCES_PREFIX, "graphics", resource);
     SDL_Surface *surface = IMG_Load(path);
     if (!surface)
         log_msg(LOG_ERROR, "gui", 2, "Failed to load resource ", path);
+    else
+        log_msg(LOG_DEBUG, "gui", 2, "Loading resource ", path);
     free(resource);
     free(path);
-    gui_terrain_foregrounds_cache[terrain.resource] = surface;
+    gui_terrain_foregrounds_cache[terrain.resource][terrain.resource_amount] = surface;
     return surface;
         
 }
@@ -112,7 +134,7 @@ SDL_Surface* gui_get_terrain_foreground(SDL_PixelFormat *format, struct Terrain 
  * \see gui_get_camera_height
  */
 
-float gui_get_camera_width(struct Gui *gui) {
+float gui_get_camera_width(const struct Gui *gui) {
     return ((float) gui->size_x - gui->menu_width)/GUI_TERRAIN_BORDER;
 }
 
@@ -122,68 +144,68 @@ float gui_get_camera_width(struct Gui *gui) {
  * \return Height of the camera, as a number of terrain elements.
  * \see gui_get_camera_width
  */
-float gui_get_camera_height(struct Gui *gui) {
+float gui_get_camera_height(const struct Gui *gui) {
     return ((float) gui->size_y)/GUI_TERRAIN_BORDER;
 }
 
 /**
- * \brief (Re)draw the entire interface.
- * \param game The game instance.
- * \param player The player who is using this gui instance.
+ * \brief Draw a terrain on the camera, if needed.
+ * \see gui_draw
+ * \see gui_draw_terrain_on_minimap
  */
-void gui_draw(struct Game *game, struct Player *player) {
-    // Redraw the entire camera (view + minimap)
-    struct Gui* gui = (struct Gui*) player->handler;
-    SDL_Rect coord, minimap_coord, minimap_rectangle;
-    SDL_Surface *surface, *background, *foreground;
-    Uint32 color;
-    struct Terrain *cell = game->map->terrain;
-    int relative_x, relative_y;
-
-    // Some handy pre-computed values
+void gui_draw_terrain_on_camera(const struct Gui *gui, const struct Terrain *cell, const coordinate x, const coordinate y) {
+    const int relative_x = x - gui->camera->x, relative_y = y - gui->camera->y;
+    SDL_Rect camera_coord;
+    SDL_Surface *background, *foreground;
+    camera_coord.x = relative_x*GUI_TERRAIN_BORDER;
+    camera_coord.y = relative_y*GUI_TERRAIN_BORDER;
+    if (relative_x >= 0 && camera_coord.x+GUI_TERRAIN_BORDER < gui->size_x-gui->menu_width && relative_y >= 0 && camera_coord.y+GUI_TERRAIN_BORDER < gui->size_x) {
+        background = gui_get_terrain_background(gui->screen->format, *cell, x, y);
+        SDL_BlitSurface(background, NULL, gui->screen, &camera_coord);
+        foreground = gui_get_terrain_foreground(gui->screen->format, *cell);
+        if (foreground)
+            SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
+        // Do not free the surface, it is cached.
+    }
+}
+/**
+ * \brief Draw a terrain on the minimap.
+ * \see gui_draw
+ * \see gui_draw_terrain_on_camera
+ */
+void gui_draw_terrain_on_minimap(const struct Gui *gui, const struct Map *map, const struct Terrain *cell, const coordinate x, const coordinate y) {
     const int minimap_width = gui->menu_width-2*GUI_MINIMAP_MARGIN;
-    const float minimap_element_size = ((float) minimap_width)/game->map->size_x;
-    const int minimap_height = game->map->size_y*minimap_element_size;
+    const float minimap_element_size = ((float) minimap_width)/map->size_x;
+    const int minimap_height = map->size_y*minimap_element_size;
+    const int minimap_corner1_x = gui->size_x-gui->menu_width+GUI_MINIMAP_MARGIN;
+    const int minimap_corner1_y = GUI_MINIMAP_MARGIN;
+    SDL_Surface *surface;
+    SDL_Rect minimap_coord;
+    Uint32 color = gui_get_terrain_color(gui->screen->format, *cell);
+    minimap_coord.x = minimap_corner1_x + x*minimap_element_size;
+    minimap_coord.y = GUI_MINIMAP_MARGIN + y*minimap_element_size;
+    surface = SDL_CreateRGBSurface(SDL_HWSURFACE, ceil(minimap_element_size), ceil(minimap_element_size), 32, 0, 0, 0, 0);
+    SDL_FillRect(surface, NULL, color);
+    SDL_BlitSurface(surface, NULL, gui->screen, &minimap_coord);
+    SDL_FreeSurface(surface);
+}
+/**
+ * \brief Draw the rectangle on the minimap.
+ * \see gui_draw
+ * \see gui_draw_terrain_on_camera
+ */
+void gui_draw_rectangle_on_minimap(const struct Gui *gui, const struct Map *map) {
+    const int minimap_width = gui->menu_width-2*GUI_MINIMAP_MARGIN;
+    const float minimap_element_size = ((float) minimap_width)/map->size_x;
+    const int minimap_height = map->size_y*minimap_element_size;
     const int minimap_corner1_x = gui->size_x-gui->menu_width+GUI_MINIMAP_MARGIN;
     const int minimap_corner1_y = GUI_MINIMAP_MARGIN;
     const int minimap_camera_corner1_x = minimap_corner1_x + gui->camera->x*minimap_element_size;
     const int minimap_camera_corner1_y = minimap_corner1_y + gui->camera->y*minimap_element_size;
     const int minimap_camera_corner2_x = minimap_camera_corner1_x + gui_get_camera_width(gui)*minimap_element_size;
     const int minimap_camera_corner2_y = minimap_camera_corner1_y + gui_get_camera_height(gui)*minimap_element_size;
-
-    // Draw the camera and the minimap
-    for (int x=0; x<(game->map->size_x); x++) {
-        relative_x = x - gui->camera->x;
-        coord.x = relative_x*GUI_TERRAIN_BORDER;
-        minimap_coord.x = minimap_corner1_x + x*minimap_element_size;
-        for (int y=0; y<game->map->size_y; y++) {
-            color = gui_get_terrain_color(gui->screen->format, *cell);
-
-            // Draw on camera
-            relative_y = y - gui->camera->y;
-            coord.y = relative_y*GUI_TERRAIN_BORDER;
-            if (relative_x >= 0 && coord.x+GUI_TERRAIN_BORDER < gui->size_x-gui->menu_width && relative_y >= 0 && coord.y+GUI_TERRAIN_BORDER < gui->size_x) {
-                // Display only if needed.
-                background = gui_get_terrain_background(gui->screen->format, *cell, x, y);
-                SDL_BlitSurface(background, NULL, gui->screen, &coord);
-                foreground = gui_get_terrain_foreground(gui->screen->format, *cell);
-                if (foreground)
-                    SDL_BlitSurface(foreground, NULL, gui->screen, &coord);
-                // Do not free the surface, they cached.
-            }
-
-            // Draw on minimap
-            minimap_coord.y = GUI_MINIMAP_MARGIN + y*minimap_element_size;
-            surface = SDL_CreateRGBSurface(SDL_HWSURFACE, ceil(minimap_element_size), ceil(minimap_element_size), 32, 0, 0, 0, 0);
-            SDL_FillRect(surface, NULL, color);
-            SDL_BlitSurface(surface, NULL, gui->screen, &minimap_coord);
-            SDL_FreeSurface(surface);
-
-            cell += 1;
-        }
-    }
-    
-    // Draw rectangle on the minimap
+    SDL_Surface *surface;
+    SDL_Rect minimap_coord;
     surface = SDL_CreateRGBSurface(SDL_HWSURFACE, min(1, floor(minimap_element_size)), min(1, floor(minimap_element_size)), 32, 0, 0, 0, 0);
     SDL_FillRect(surface, NULL, SDL_MapRGB(gui->screen->format, 0, 0, 0));
     for (minimap_coord.x=minimap_camera_corner1_x; minimap_coord.x<=minimap_camera_corner2_x; minimap_coord.x++) {
@@ -199,6 +221,31 @@ void gui_draw(struct Game *game, struct Player *player) {
         SDL_BlitSurface(surface, NULL, gui->screen, &minimap_coord);
     }
     SDL_FreeSurface(surface);
+}
+
+/**
+ * \brief (Re)draw the entire interface.
+ * \param game The game instance.
+ * \param player The player who is using this gui instance.
+ */
+void gui_draw(struct Game *game, struct Player *player) {
+    // Redraw the entire camera (view + minimap)
+    struct Gui* gui = (struct Gui*) player->handler;
+    struct Terrain *cell = game->map->terrain;
+
+    // Some handy pre-computed values
+
+    // Draw the camera and the minimap
+    for (int x=0; x<(game->map->size_x); x++) {
+        for (int y=0; y<game->map->size_y; y++) {
+            gui_draw_terrain_on_camera(gui, cell, x, y);
+            gui_draw_terrain_on_minimap(gui, game->map, cell, x, y);
+
+            cell += 1;
+        }
+    }
+    
+    gui_draw_rectangle_on_minimap(gui, game->map);
 
     SDL_Flip(gui->screen);
 }
@@ -224,7 +271,7 @@ struct Gui* gui_init(int size_x, int size_y, int menu_width) {
         SDL_WM_SetCaption("Globulation 3", NULL);
         SDL_EnableKeyRepeat(25, 25);
         memset(gui_terrain_backgrounds_cache, 0, sizeof(SDL_Surface*)*UNKNOWN_TERRAIN_TYPE*4*4);
-        memset(gui_terrain_foregrounds_cache, 0, sizeof(SDL_Surface*)*UNKNOWN_RESOURCE);
+        memset(gui_terrain_foregrounds_cache, 0, sizeof(SDL_Surface*)*UNKNOWN_RESOURCE*(MAX_TERRAIN_RESOURCES+1));
         return gui;
     }
 }
@@ -278,12 +325,33 @@ void gui_on_game_tick(struct Game *game, struct Player *player) {
                         if (gui->camera->x + ((gui->size_x - gui->menu_width)/GUI_TERRAIN_BORDER ) < game->map->size_x)
                             gui->camera->x++;
                         break;
+                    default:
+                        return;
                 }
                 gui_draw(game, player);
                 break;
         }
     }
 }
+
+/**
+ * \brief Callback for map changes.
+ * \param game The game instance
+ * \param player The player who is using this gui instance.
+ * \param coord Coordinates of changed terrains.
+ */
+void gui_on_map_change(struct Game *game, struct Player *player, coordinate** coord) {
+    coordinate x, y;
+    for (int i=0; coord[i]; i++) {
+        x = coord[i][0];
+        y = coord[i][1];
+        gui_draw_terrain_on_camera((struct Gui*) player->handler, &game->map->terrain[x*game->map->size_y + y], x, y);
+        gui_draw_terrain_on_minimap((struct Gui*) player->handler, game->map, &game->map->terrain[x*game->map->size_y + y], x, y);
+        gui_draw_rectangle_on_minimap((struct Gui*) player->handler, game->map);
+    }
+    SDL_Flip(((struct Gui*) player->handler)->screen);
+}
+
 /**
  * \brief Callback for the game end.
  * \param game The game instance

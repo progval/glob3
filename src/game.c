@@ -40,21 +40,26 @@
 void game_run(struct Game *game) {
     assert(game->state == NOT_STARTED);
     game->state = INITIALIZING;
+
+    // Call game_start callbacks.
     for (struct PlayerList *players = game->players; players; players=players->next)
-        if (players->player->callbacks->game_start)
-            players->player->callbacks->game_start(game, players->player);
+        for (struct CallbackList *callbacks = players->player->callbacks->game_start; callbacks; callbacks=callbacks->next)
+            ((cb_game_start) callbacks->callback)(game, players->player);
 
     game->state = SYNCING;
     while (game->state != ENDING) {
         game->state = TICKING;
+
+        // Call game_tick callbacks.
         for (struct PlayerList *players = game->players; players; players=players->next)
-            if (players->player->callbacks->game_tick)
-                players->player->callbacks->game_tick(game, players->player);
+            for (struct CallbackList *callbacks = players->player->callbacks->game_tick; callbacks; callbacks=callbacks->next)
+                ((cb_game_tick) callbacks->callback)(game, players->player);
     }
 
+    // Call game_end callbacks.
     for (struct PlayerList *players = game->players; players; players=players->next)
-        if (players->player->callbacks->game_end)
-            players->player->callbacks->game_end(game, players->player);
+        for (struct CallbackList *callbacks = players->player->callbacks->game_end; callbacks; callbacks=callbacks->next)
+            ((cb_game_end) callbacks->callback)(game, players->player);
 }
 
 /**

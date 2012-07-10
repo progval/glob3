@@ -87,6 +87,10 @@ int main(int argc, char* argv[])
 #endif
     if (daemon) {
         log_msg(LOG_INFO, "boot", 1, "Running as daemon.");
+        if (!net) {
+            log_msg(LOG_CRITICAL, "boot", 1, "Cannot run as daemon if network support is disabled.");
+            return EXIT_FAILURE;
+        }
         callbacks->game_start = NULL;
         callbacks->game_tick = NULL;
         callbacks->game_end = NULL;
@@ -94,14 +98,35 @@ int main(int argc, char* argv[])
 #if WITH_GUI
     else {
         log_msg(LOG_INFO, "boot", 1, "Starting the GUI.");
+        if (net)
+            log_msg(LOG_INFO, "boot", 1, "Running with network support.");
+        else
+            log_msg(LOG_INFO, "boot", 1, "Running without network support.");
         player->handler = gui;
-        callbacks->game_start = (cb_game_start) gui_on_game_start;
-        callbacks->game_tick = (cb_game_tick) gui_on_game_tick;
-        callbacks->game_end = (cb_game_end) gui_on_game_end;
+        callbacks->game_start = malloc(sizeof(struct CallbackList));
+        callbacks->game_start->next = NULL;
+        callbacks->game_start->callback = (cb_game_start) gui_on_game_start;
+
+        callbacks->game_tick = malloc(sizeof(struct CallbackList));
+        callbacks->game_tick->next = NULL;
+        callbacks->game_tick->callback = (cb_game_tick) gui_on_game_tick;
+
+        if (!net) { // There is no server to handle growing
+            callbacks->game_tick->next = malloc(sizeof(struct CallbackList));
+            callbacks->game_tick->next->next = NULL;
+            callbacks->game_tick->next->callback = (cb_game_tick) map_grow_resources_on_game_tick;
+        }
+
+        callbacks->map_change = malloc(sizeof(struct CallbackList));
+        callbacks->map_change->next = NULL;
+        callbacks->map_change->callback = (cb_map_change) gui_on_map_change;
+
+        callbacks->game_end = malloc(sizeof(struct CallbackList));
+        callbacks->game_end->next = NULL;
+        callbacks->game_end->callback = (cb_game_end) gui_on_game_end;
     }
 #endif
 
-    callbacks->map_change = NULL;
     callbacks->unit_die = NULL;
     callbacks->unit_spawn = NULL;
 
