@@ -150,15 +150,17 @@ float gui_get_camera_height(const struct Gui *gui) {
 
 /**
  * \brief Draw a terrain on the camera, if needed.
+ * \param redraw Determines whether or not this function will try to fix glitches with close cells.
  * \see gui_draw
  * \see gui_draw_terrain_on_minimap
  */
-void gui_draw_terrain_on_camera(const struct Gui *gui, const struct Terrain *cell, const coordinate x, const coordinate y) {
+void gui_draw_terrain_on_camera(const struct Gui *gui, const struct Map *map, const coordinate x, const coordinate y, bool redraw) {
     const int relative_x = x - gui->camera->x, relative_y = y - gui->camera->y;
     SDL_Rect camera_coord;
     SDL_Surface *background, *foreground;
     camera_coord.x = relative_x*GUI_TERRAIN_BORDER;
     camera_coord.y = relative_y*GUI_TERRAIN_BORDER;
+    const struct Terrain *cell = &map->terrain[x*map->size_y + y];
     if (relative_x >= 0 && camera_coord.x+GUI_TERRAIN_BORDER < gui->size_x-gui->menu_width && relative_y >= 0 && camera_coord.y+GUI_TERRAIN_BORDER < gui->size_x) {
         background = gui_get_terrain_background(gui->screen->format, *cell, x, y);
         SDL_BlitSurface(background, NULL, gui->screen, &camera_coord);
@@ -166,6 +168,31 @@ void gui_draw_terrain_on_camera(const struct Gui *gui, const struct Terrain *cel
         if (foreground)
             SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
         // Do not free the surface, it is cached.
+
+        if (redraw && relative_x>0) {
+            // Fix the left cell
+            camera_coord.x -= GUI_TERRAIN_BORDER;
+            foreground = gui_get_terrain_foreground(gui->screen->format, *(cell-map->size_y));
+            if (foreground)
+                SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
+            camera_coord.x += GUI_TERRAIN_BORDER;
+        }
+        if (redraw && relative_y>0) {
+            // Fix the top cell
+            camera_coord.y -= GUI_TERRAIN_BORDER;
+            foreground = gui_get_terrain_foreground(gui->screen->format, *(cell-1));
+            if (foreground)
+                SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
+            camera_coord.y += GUI_TERRAIN_BORDER;
+        }
+        if (redraw && relative_y>0) {
+            // Fix the top left cell
+            camera_coord.x -= GUI_TERRAIN_BORDER;
+            camera_coord.y -= GUI_TERRAIN_BORDER;
+            foreground = gui_get_terrain_foreground(gui->screen->format, *(cell-1-map->size_y));
+            if (foreground)
+                SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
+        }
     }
 }
 /**
@@ -173,12 +200,13 @@ void gui_draw_terrain_on_camera(const struct Gui *gui, const struct Terrain *cel
  * \see gui_draw
  * \see gui_draw_terrain_on_camera
  */
-void gui_draw_terrain_on_minimap(const struct Gui *gui, const struct Map *map, const struct Terrain *cell, const coordinate x, const coordinate y) {
+void gui_draw_terrain_on_minimap(const struct Gui *gui, const struct Map *map, const coordinate x, const coordinate y) {
     const int minimap_width = gui->menu_width-2*GUI_MINIMAP_MARGIN;
     const float minimap_element_size = ((float) minimap_width)/map->size_x;
     const int minimap_height = map->size_y*minimap_element_size;
     const int minimap_corner1_x = gui->size_x-gui->menu_width+GUI_MINIMAP_MARGIN;
     const int minimap_corner1_y = GUI_MINIMAP_MARGIN;
+    const struct Terrain *cell = &map->terrain[x*map->size_y + y];
     SDL_Surface *surface;
     SDL_Rect minimap_coord;
     Uint32 color = gui_get_terrain_color(gui->screen->format, *cell);
@@ -236,10 +264,10 @@ void gui_draw(struct Game *game, struct Player *player) {
     // Some handy pre-computed values
 
     // Draw the camera and the minimap
-    for (int x=0; x<(game->map->size_x); x++) {
-        for (int y=0; y<game->map->size_y; y++) {
-            gui_draw_terrain_on_camera(gui, cell, x, y);
-            gui_draw_terrain_on_minimap(gui, game->map, cell, x, y);
+    for (int x=game->map->size_x-1; x>=0; x--) {
+        for (int y=game->map->size_y-1; y>=0; y--) {
+            gui_draw_terrain_on_camera(gui, game->map, x, y, false); // No need to fix glitches
+            gui_draw_terrain_on_minimap(gui, game->map, x, y);
 
             cell += 1;
         }
@@ -345,8 +373,8 @@ void gui_on_map_change(struct Game *game, struct Player *player, coordinate** co
     for (int i=0; coord[i]; i++) {
         x = coord[i][0];
         y = coord[i][1];
-        gui_draw_terrain_on_camera((struct Gui*) player->handler, &game->map->terrain[x*game->map->size_y + y], x, y);
-        gui_draw_terrain_on_minimap((struct Gui*) player->handler, game->map, &game->map->terrain[x*game->map->size_y + y], x, y);
+        gui_draw_terrain_on_camera((struct Gui*) player->handler, game->map, x, y, true);
+        gui_draw_terrain_on_minimap((struct Gui*) player->handler, game->map, x, y);
         gui_draw_rectangle_on_minimap((struct Gui*) player->handler, game->map);
     }
     SDL_Flip(((struct Gui*) player->handler)->screen);

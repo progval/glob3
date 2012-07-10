@@ -85,7 +85,7 @@ coordinate** map_grow_resources(struct Map *map) {
     float amount = ((float) map->size_x*map->size_y)*GROWTH_COEFFICIENT;
     int actually_grown = 0;
     coordinate x, y;
-    coordinate** coord = malloc(sizeof(coordinate*)*(floor(amount)+1));
+    coordinate** coord = malloc(sizeof(coordinate*)*(ceil(amount)+2));
     struct Terrain *cell, *cell2;
     bool found;
     static bool rand_initialized = false;
@@ -122,6 +122,10 @@ coordinate** map_grow_resources(struct Map *map) {
                             continue;
                         cell->resource = cell2->resource;
                         cell->resource_amount = 1;
+                        coord[actually_grown] = malloc(sizeof(coordinate)*2);
+                        coord[actually_grown][0] = x;
+                        coord[actually_grown][1] = y;
+                        actually_grown++;
                         break;
                     }
                 }
