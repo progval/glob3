@@ -38,7 +38,7 @@
 #include "log.h"
 #include "os.h"
 
-SDL_Surface* gui_terrain_backgrounds_cache[UNKNOWN_TERRAIN_TYPE];
+SDL_Surface* gui_terrain_backgrounds_cache[UNKNOWN_TERRAIN_TYPE][4][4];
 SDL_Surface* gui_terrain_foregrounds_cache[UNKNOWN_RESOURCE];
 
 /**
@@ -70,9 +70,9 @@ Uint32 gui_get_terrain_color(SDL_PixelFormat *format, struct Terrain terrain) {
 }
 
 SDL_Surface* gui_get_terrain_background(SDL_PixelFormat *format, struct Terrain terrain, coordinate x, coordinate y) {
-    if (gui_terrain_backgrounds_cache[terrain.type])
-        return gui_terrain_backgrounds_cache[terrain.type];
-    char *resource = graphics_get_resource_name(TERRAIN, terrain.type, 0, 0);
+    if (gui_terrain_backgrounds_cache[terrain.type][x%4][y%4])
+        return gui_terrain_backgrounds_cache[terrain.type][x%4][y%4];
+    char *resource = graphics_get_resource_name(TERRAIN, terrain.type, 0, (x%4) + 4*(y%4));
     assert(resource != NULL);
     resource = strcat_realloc(resource, ".png");
     char *path = os_path_join(3, RESOURCES_PREFIX, "graphics", resource);
@@ -81,7 +81,7 @@ SDL_Surface* gui_get_terrain_background(SDL_PixelFormat *format, struct Terrain 
         log_msg(LOG_ERROR, "gui", 2, "Failed to load resource ", path);
     free(resource);
     free(path);
-    gui_terrain_backgrounds_cache[terrain.type] = surface;
+    gui_terrain_backgrounds_cache[terrain.type][x%4][y%4] = surface;
     return surface;
         
 }
@@ -223,7 +223,7 @@ struct Gui* gui_init(int size_x, int size_y, int menu_width) {
         gui->camera = malloc(sizeof(struct GuiCamera));
         SDL_WM_SetCaption("Globulation 3", NULL);
         SDL_EnableKeyRepeat(25, 25);
-        memset(gui_terrain_backgrounds_cache, 0, sizeof(SDL_Surface*)*UNKNOWN_TERRAIN_TYPE);
+        memset(gui_terrain_backgrounds_cache, 0, sizeof(SDL_Surface*)*UNKNOWN_TERRAIN_TYPE*4*4);
         memset(gui_terrain_foregrounds_cache, 0, sizeof(SDL_Surface*)*UNKNOWN_RESOURCE);
         return gui;
     }
