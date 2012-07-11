@@ -25,10 +25,26 @@
 #include "player.h"
 
 /**
+ * \brief Recursive CallbackList freer.
+ */
+
+void player_callbacks_free(struct CallbackList *list) {
+    if (list)
+        player_callbacks_free(list->next);
+    free(list);
+}
+
+/**
  * \brief Free the resources uses by the player instance.
  * \param gui The player instance.
  */
 void player_free(struct Player *player) {
+    player_callbacks_free(player->callbacks->game_start);
+    player_callbacks_free(player->callbacks->game_tick);
+    player_callbacks_free(player->callbacks->game_end);
+    player_callbacks_free(player->callbacks->map_change);
+    player_callbacks_free(player->callbacks->unit_die);
+    player_callbacks_free(player->callbacks->unit_spawn);
     free(player->callbacks);
     free(player);
 }

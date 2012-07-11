@@ -82,7 +82,7 @@ SDL_Surface* gui_get_terrain_background(SDL_PixelFormat *format, struct Terrain 
         return gui_terrain_backgrounds_cache[terrain.type][x%4][y%4];
     char *resource = graphics_get_resource_name(TERRAIN, terrain.type, 0, (x%4) + 4*(y%4));
     assert(resource != NULL);
-    resource = strcat_realloc(resource, ".png");
+    resource = strcat_realloc_free(resource, ".png");
     char *path = os_path_join(3, RESOURCES_PREFIX, "graphics", resource);
     SDL_Surface *surface = IMG_Load(path);
     if (!surface)
@@ -113,7 +113,7 @@ SDL_Surface* gui_get_terrain_foreground(SDL_PixelFormat *format, struct Terrain 
     else
         variant = 0;
     resource = graphics_get_resource_name(RESOURCE, terrain.resource, 0, variant);
-    resource = strcat_realloc(resource, ".png");
+    resource = strcat_realloc_free(resource, ".png");
     char *path = os_path_join(3, RESOURCES_PREFIX, "graphics", resource);
     SDL_Surface *surface = IMG_Load(path);
     if (!surface)

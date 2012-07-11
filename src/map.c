@@ -80,6 +80,8 @@ struct Map* map_create_simple_map(coordinate size_x, coordinate size_y) {
  *
  * Then, n cells are tested for growability: if there is already a resource, it grows;
  * and if not, the neighboring is tested.
+ * We assume that wind comes from the top left corner, so resources are more likely to
+ * expand to the bottom right corner.
  */
 coordinate** map_grow_resources(struct Map *map) {
     float amount = ((float) map->size_x*map->size_y)*GROWTH_COEFFICIENT;
@@ -143,11 +145,13 @@ coordinate** map_grow_resources(struct Map *map) {
  */
 void map_grow_resources_on_game_tick(struct Game *game, struct Player *player) {
     coordinate **coord = map_grow_resources(game->map);
-    for (struct PlayerList *players = game->players; players; players=players->next) {
-        if (*coord)
-            for (struct CallbackList *callbacks = players->player->callbacks->map_change; callbacks; callbacks=callbacks->next)
-                ((cb_map_change) callbacks->callback)(game, players->player, coord);
+    if (*coord) {
+        for (struct PlayerList *players = game->players; players; players=players->next)
+                for (struct CallbackList *callbacks = players->player->callbacks->map_change; callbacks; callbacks=callbacks->next)
+                    ((cb_map_change) callbacks->callback)(game, players->player, coord);
     }
+    for (int i=0; coord[i]; i++)
+        free(coord[i]);
     free(coord);
 }
 
