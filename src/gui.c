@@ -187,6 +187,7 @@ float gui_get_camera_height(const struct Gui *gui) {
     return ((float) gui->size_y)/GUI_TERRAIN_BORDER;
 }
 
+void gui_draw_terrain_on_camera(const struct Gui *gui, const struct Map *map, const coordinate x, const coordinate y, bool redraw);
 /**
  * \brief Draw a building on the camera.
  * \see gui_draw
@@ -199,6 +200,11 @@ void gui_draw_building_on_camera(const struct Gui *gui, const struct Map *map, c
     camera_coord.y = relative_y*GUI_TERRAIN_BORDER;
     SDL_Surface *surface;
     if (relative_x >= 0 && camera_coord.x+GUI_TERRAIN_BORDER < gui->size_x-gui->menu_width && relative_y >= 0 && camera_coord.y+GUI_TERRAIN_BORDER < gui->size_x) {
+        // Redraw the terrain behind, so we do not loose border smoothing.
+        for (int x2=x; x2 < x+building_get_width(building); x2++)
+            for (int y2=y; y2 < y+building_get_height(building); y2++)
+                gui_draw_terrain_on_camera(gui, map, x2, y2, (x2==x || y2==y));
+
         surface = gui_get_building(gui->screen->format, building);
         if (surface) {
             if (building->type == SWARM) {
