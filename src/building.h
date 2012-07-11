@@ -24,11 +24,12 @@
 #ifndef __BUILDING_H__
 #define __BUILDING_H__
 
+#include <stdbool.h>
 #include "player.h"
 #include "protocol.h"
+#include "resource.h"
 
-typedef uint8_t building_health;
-typedef uint8_t building_level;
+#define MAX_BUILDING_LEVEL 3
 
 enum BuildingType {
     INN, SWARM,
@@ -38,8 +39,12 @@ enum BuildingType {
 struct Building {
     enum BuildingType type;
     struct Player *owner;
-    building_health health;
-    building_level level;
+    unsigned int health;
+    unsigned int level;
+    /** Amount of resources in the building (including materials). */
+    unsigned int contents[UNKNOWN_RESOURCE];
+    /** Determine whether or not the construction is in progress. */
+    bool in_progress;
 };
 
 struct BuildingList {
@@ -48,5 +53,9 @@ struct BuildingList {
     struct Building *building;
 };
 
+struct Building* building_new(struct Player *player, enum BuildingType type);
+struct Building* building_get(struct Map *map, coordinate x, coordinate y);
+coordinate building_get_width(struct Building *building);
+coordinate building_get_height(struct Building *building);
 
 #endif

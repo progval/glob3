@@ -72,7 +72,6 @@ int main(int argc, char* argv[])
     struct PlayerCallbacks *callbacks = malloc(sizeof(struct PlayerCallbacks));
     struct Game *game = malloc(sizeof(struct Game));
     game->state = NOT_STARTED;
-    game->map = map_create_simple_map(128, 128);
     struct Player *player = malloc(sizeof(struct Player));
     player->name = "test";
     player->callbacks = callbacks;
@@ -129,6 +128,9 @@ int main(int argc, char* argv[])
 
     callbacks->unit_die = NULL;
     callbacks->unit_spawn = NULL;
+
+    game->map = map_create_simple_map(player, 128, 128);
+
 
     game_run(game);
     map_free(game->map);

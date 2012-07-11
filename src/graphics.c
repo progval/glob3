@@ -109,7 +109,13 @@ char* graphics_get_resource_name(enum GraphicsResourceType resource_type, int re
             }
             break;
         case BUILDING:
-            // TODO: implement this.
+            switch(resource) {
+                case INN: prefix = "inn"; break;
+                case SWARM: prefix = "swarm"; break;
+                default:
+                    log_msg(LOG_WARNING, "graphics", 1, "Asking for unknown BUILDING resource.");
+                    return NULL;
+            }
             break;
     }
     char variant_string[4]; // The variant never exceeds 447.

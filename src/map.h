@@ -27,13 +27,15 @@
 #include <stdint.h>
 #include "building.h"
 #include "protocol.h"
+#include "resource.h"
+#include "player.h"
 #include "game.h"
 
 /**
  * \brief Growth coefficient.
  * \see map_grow_resources
  */
-#define GROWTH_COEFFICIENT 0.000001
+#define GROWTH_COEFFICIENT 0.001
 
 /**
  * \brief Maximum amount of resource in a terrain.
@@ -45,10 +47,6 @@
  */
 enum TerrainType {
     GRASS, WATER, UNKNOWN_TERRAIN_TYPE,
-};
-
-enum Resource {
-    NO_RESOURCE, WHEAT, WOOD, STONE, ALGAE, UNKNOWN_RESOURCE,
 };
 
 struct Terrain {
@@ -63,10 +61,10 @@ struct Terrain {
 struct Map {
     coordinate size_x, size_y;
     struct Terrain *terrain; // two-dimensional array.
-    struct BuildingList buildings[UNKNOWN_TERRAIN_TYPE];
+    struct BuildingList* buildings[UNKNOWN_BUILDING]; // Storing buildings as a list makes searches faster, as the number of buildings is quite low.
 };
 
-struct Map* map_create_simple_map(coordinate size_x, coordinate size_y);
+struct Map* map_create_simple_map(struct Player *player, coordinate size_x, coordinate size_y);
 coordinate** map_grow_resources(struct Map *map);
 void map_free(struct Map *map);
 

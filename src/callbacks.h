@@ -35,7 +35,7 @@ struct Terrain;
 typedef void (*cb_game_start) (struct Game *game, void *data);
 typedef void (*cb_game_tick) (struct Game *game, void *data);
 typedef void (*cb_game_end) (struct Game *game, void *data);
-typedef void (*cb_map_change) (struct Game *game, struct Player *player, coordinate** coord);
+typedef void (*cb_map_change) (struct Game *game, struct Player *player, const coordinate** coord);
 typedef void (*cb_unit_spawn) (coordinate x, coordinate y, struct Map *map, struct Unit *unit);
 typedef void (*cb_unit_die) (coordinate x, coordinate y, struct Map *map, struct Unit *unit, struct Unit *killer);
 

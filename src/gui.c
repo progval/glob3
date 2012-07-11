@@ -28,6 +28,7 @@
 #include <SDL/SDL_image.h>
 #include <SDL/SDL.h>
 #include <math.h>
+#include "building.h"
 #include "graphics.h"
 #include "player.h"
 #include "config.h"
@@ -40,6 +41,7 @@
 
 SDL_Surface* gui_terrain_backgrounds_cache[UNKNOWN_TERRAIN_TYPE][4][4];
 SDL_Surface* gui_terrain_foregrounds_cache[UNKNOWN_RESOURCE][MAX_TERRAIN_RESOURCES+1];
+SDL_Surface* gui_buildings_cache[UNKNOWN_BUILDING][MAX_BUILDING_LEVEL][2]; // 2 stands for the two building->in_progress states.
 
 /**
  * \brief Return the SDL color matching the terrain.
@@ -100,6 +102,7 @@ SDL_Surface* gui_get_terrain_background(SDL_PixelFormat *format, struct Terrain 
  * \param terrain The terrain you want the sprite.
  * \return The sprite.
  * \see gui_get_terrain_background.
+ * \see gui_get_building
  */
 SDL_Surface* gui_get_terrain_foreground(SDL_PixelFormat *format, struct Terrain terrain) {
     if (terrain.resource == NO_RESOURCE)
@@ -108,10 +111,13 @@ SDL_Surface* gui_get_terrain_foreground(SDL_PixelFormat *format, struct Terrain 
         return gui_terrain_foregrounds_cache[terrain.resource][terrain.resource_amount];
     char *resource;
     int variant;
+    assert(terrain.resource != NO_RESOURCE || terrain.resource_amount == 0);
+    assert(terrain.resource == NO_RESOURCE || terrain.resource_amount != 0);
     if (terrain.resource == WHEAT || terrain.resource == WOOD || terrain.resource == STONE || terrain.resource == ALGAE)
         variant = terrain.resource_amount-1;
     else
         variant = 0;
+    assert(variant >= 0);
     resource = graphics_get_resource_name(RESOURCE, terrain.resource, 0, variant);
     resource = strcat_realloc_free(resource, ".png");
     char *path = os_path_join(3, RESOURCES_PREFIX, "graphics", resource);
@@ -126,6 +132,39 @@ SDL_Surface* gui_get_terrain_foreground(SDL_PixelFormat *format, struct Terrain 
     return surface;
         
 }
+
+/**
+ * \brief Get a sprite for the given building.
+ * \see gui_get_terrain_foreground
+ */
+SDL_Surface* gui_get_building(SDL_PixelFormat *format, const struct Building *building) {
+    if (gui_buildings_cache[building->type][building->level][building->in_progress])
+        return gui_buildings_cache[building->type][building->level][building->in_progress];
+    char *resource, *resource2;
+    resource = graphics_get_resource_name(BUILDING, building->type, 0, building->level);
+    resource2 = malloc(strlen(resource)+7);
+    strcpy(resource2, resource);
+    if (building->in_progress)
+        strcat(resource2, "c0");
+    else
+        strcat(resource2, "b0");
+    if (building->type == SWARM)
+        strcat(resource2, "r");
+    strcat(resource2, ".png");
+    free(resource);
+    resource = resource2;
+    char *path = os_path_join(3, RESOURCES_PREFIX, "graphics", resource);
+    SDL_Surface *surface = IMG_Load(path);
+    if (!surface)
+        log_msg(LOG_ERROR, "gui", 2, "Failed to load resource ", path);
+    else
+        log_msg(LOG_DEBUG, "gui", 2, "Loading resource ", path);
+    free(resource);
+    free(path);
+    gui_buildings_cache[building->type][building->level][building->in_progress] = surface;
+    return surface;
+}
+
 
 /**
  * \brief Shortcut for getting the camera width.
@@ -149,10 +188,34 @@ float gui_get_camera_height(const struct Gui *gui) {
 }
 
 /**
+ * \brief Draw a building on the camera.
+ * \see gui_draw
+ * \see gui_draw_building_on_camera
+ */
+void gui_draw_building_on_camera(const struct Gui *gui, const struct Map *map, const coordinate x, const coordinate y, struct Building *building) {
+    const int relative_x = x - gui->camera->x, relative_y = y - gui->camera->y;
+    SDL_Rect camera_coord;
+    camera_coord.x = relative_x*GUI_TERRAIN_BORDER;
+    camera_coord.y = relative_y*GUI_TERRAIN_BORDER;
+    SDL_Surface *surface;
+    if (relative_x >= 0 && camera_coord.x+GUI_TERRAIN_BORDER < gui->size_x-gui->menu_width && relative_y >= 0 && camera_coord.y+GUI_TERRAIN_BORDER < gui->size_x) {
+        surface = gui_get_building(gui->screen->format, building);
+        if (surface) {
+            if (building->type == SWARM) {
+                camera_coord.x -= 5;
+                camera_coord.y -= GUI_TERRAIN_BORDER/2;
+            }
+            SDL_BlitSurface(surface, NULL, gui->screen, &camera_coord);
+        }
+    }
+}
+
+/**
  * \brief Draw a terrain on the camera, if needed.
  * \param redraw Determines whether or not this function will try to fix glitches with close cells.
  * \see gui_draw
  * \see gui_draw_terrain_on_minimap
+ * \see gui_draw_building_on_camera
  */
 void gui_draw_terrain_on_camera(const struct Gui *gui, const struct Map *map, const coordinate x, const coordinate y, bool redraw) {
     const int relative_x = x - gui->camera->x, relative_y = y - gui->camera->y;
@@ -165,36 +228,45 @@ void gui_draw_terrain_on_camera(const struct Gui *gui, const struct Map *map, co
         background = gui_get_terrain_background(gui->screen->format, *cell, x, y);
         SDL_BlitSurface(background, NULL, gui->screen, &camera_coord);
         foreground = gui_get_terrain_foreground(gui->screen->format, *cell);
-        if (foreground)
+        if (foreground) {
             SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
-        // Do not free the surface, it is cached.
+            // Do not free the surface, it is cached.
 
-        if (redraw && relative_x>0) {
-            // Fix the left cell
-            camera_coord.x -= GUI_TERRAIN_BORDER;
-            foreground = gui_get_terrain_foreground(gui->screen->format, *(cell-map->size_y));
-            if (foreground)
-                SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
-            camera_coord.x += GUI_TERRAIN_BORDER;
-        }
-        if (redraw && relative_y>0) {
-            // Fix the top cell
-            camera_coord.y -= GUI_TERRAIN_BORDER;
-            foreground = gui_get_terrain_foreground(gui->screen->format, *(cell-1));
-            if (foreground)
-                SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
-            camera_coord.y += GUI_TERRAIN_BORDER;
-        }
-        if (redraw && relative_y>0) {
-            // Fix the top left cell
-            camera_coord.x -= GUI_TERRAIN_BORDER;
-            camera_coord.y -= GUI_TERRAIN_BORDER;
-            foreground = gui_get_terrain_foreground(gui->screen->format, *(cell-1-map->size_y));
-            if (foreground)
-                SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
+            if (redraw && relative_x>0) {
+                // Fix the left cell
+                camera_coord.x -= GUI_TERRAIN_BORDER;
+                foreground = gui_get_terrain_foreground(gui->screen->format, *(cell-map->size_y));
+                if (foreground)
+                    SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
+                camera_coord.x += GUI_TERRAIN_BORDER;
+            }
+            if (redraw && relative_y>0) {
+                // Fix the top cell
+                camera_coord.y -= GUI_TERRAIN_BORDER;
+                foreground = gui_get_terrain_foreground(gui->screen->format, *(cell-1));
+                if (foreground)
+                    SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
+                camera_coord.y += GUI_TERRAIN_BORDER;
+            }
+            if (redraw && relative_x>0 && relative_y>0) {
+                // Fix the top left cell
+                camera_coord.x -= GUI_TERRAIN_BORDER;
+                camera_coord.y -= GUI_TERRAIN_BORDER;
+                foreground = gui_get_terrain_foreground(gui->screen->format, *(cell-1-map->size_y));
+                if (foreground)
+                    SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
+            }
+            if (redraw) {
+                struct BuildingList *swarms = map->buildings[SWARM];
+                while (swarms) {
+                    gui_draw_building_on_camera(gui, map, swarms->x, swarms->y, swarms->building);
+                    swarms = swarms->next;
+                }
+            }
         }
     }
 }
+
 /**
  * \brief Draw a terrain on the minimap.
  * \see gui_draw
@@ -217,6 +289,7 @@ void gui_draw_terrain_on_minimap(const struct Gui *gui, const struct Map *map, c
     SDL_BlitSurface(surface, NULL, gui->screen, &minimap_coord);
     SDL_FreeSurface(surface);
 }
+
 /**
  * \brief Draw the rectangle on the minimap.
  * \see gui_draw
@@ -272,6 +345,15 @@ void gui_draw(struct Game *game, struct Player *player) {
             cell += 1;
         }
     }
+
+    struct BuildingList *buildings;
+    for (int i=0; i<UNKNOWN_BUILDING; i++) {
+        buildings = game->map->buildings[i];
+        while (buildings) {
+            gui_draw_building_on_camera(gui, game->map, buildings->x, buildings->y, buildings->building);
+            buildings = buildings->next;
+        }
+    }
     
     gui_draw_rectangle_on_minimap(gui, game->map);
 
@@ -300,6 +382,7 @@ struct Gui* gui_init(int size_x, int size_y, int menu_width) {
         SDL_EnableKeyRepeat(25, 25);
         memset(gui_terrain_backgrounds_cache, 0, sizeof(SDL_Surface*)*UNKNOWN_TERRAIN_TYPE*4*4);
         memset(gui_terrain_foregrounds_cache, 0, sizeof(SDL_Surface*)*UNKNOWN_RESOURCE*(MAX_TERRAIN_RESOURCES+1));
+        memset(gui_buildings_cache, 0, sizeof(SDL_Surface*)*UNKNOWN_BUILDING*(MAX_BUILDING_LEVEL+1)*2);
         return gui;
     }
 }
@@ -368,7 +451,7 @@ void gui_on_game_tick(struct Game *game, struct Player *player) {
  * \param player The player who is using this gui instance.
  * \param coord Coordinates of changed terrains.
  */
-void gui_on_map_change(struct Game *game, struct Player *player, coordinate** coord) {
+void gui_on_map_change(struct Game *game, struct Player *player, const coordinate** coord) {
     coordinate x, y;
     for (int i=0; coord[i]; i++) {
         x = coord[i][0];

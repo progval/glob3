@@ -65,7 +65,7 @@ struct Gui* gui_init(int size_x, int size_y, int menu_width);
 
 void gui_on_game_start(struct Game *game, struct Player *player);
 void gui_on_game_tick(struct Game *game, struct Player *player);
-void gui_on_map_change(struct Game *game, struct Player *player, coordinate** coord);
+void gui_on_map_change(struct Game *game, struct Player *player, const coordinate** coord);
 void gui_on_game_end(struct Game *game, struct Player *player);
 
 void gui_free(struct Gui *gui);

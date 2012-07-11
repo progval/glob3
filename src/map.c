@@ -21,23 +21,27 @@
  * \brief Handle map-related stuff.
  */
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "building.h"
+#include "player.h"
 #include "utils.h"
 #include "map.h"
 #include "log.h"
 
 /**
  * \brief Create a simple map, for debugging purposes.
+ * \param player The player that will get ownership of buildings and units.
  * \param size_x Width of the map.
  * \param size_y Height of the map.
  *
  * Creates a simple map, filled with grass, a square of water in the middle,
  * and a terrain of each type in the top left corner.
  */
-struct Map* map_create_simple_map(coordinate size_x, coordinate size_y) {
+struct Map* map_create_simple_map(struct Player *player, coordinate size_x, coordinate size_y) {
     // Creates a simple map, with grass and a square of water.
     struct Map* map = malloc(sizeof(struct Map));
     map->size_x = size_x;
@@ -68,6 +72,20 @@ struct Map* map_create_simple_map(coordinate size_x, coordinate size_y) {
     map->terrain[5].type = WATER;
     map->terrain[5].resource = ALGAE;
     map->terrain[5].resource_amount = 2;
+
+    map->buildings[INN] = malloc(sizeof(struct BuildingList*));
+    map->buildings[INN]->building = building_new(player, INN);
+    map->buildings[INN]->next = NULL;
+    map->buildings[INN]->x = 10;
+    map->buildings[INN]->y = 5;
+
+    map->buildings[SWARM] = malloc(sizeof(struct BuildingList*));
+    map->buildings[SWARM]->building = building_new(player, SWARM);
+    map->buildings[SWARM]->next = NULL;
+    map->buildings[SWARM]->x = 5;
+    map->buildings[SWARM]->y = 5;
+
+
     return map;
 }
 
@@ -102,13 +120,15 @@ coordinate** map_grow_resources(struct Map *map) {
         y = randmax(map->size_y);
         cell = &map->terrain[x*map->size_y + y];
         if (cell->resource_amount > 0 && cell->resource_amount < MAX_TERRAIN_RESOURCES) {
+            assert(cell->resource != NO_RESOURCE);
             cell->resource_amount++;
             coord[actually_grown] = malloc(sizeof(coordinate)*2);
             coord[actually_grown][0] = x;
             coord[actually_grown][1] = y;
             actually_grown++;
         }
-        else if (cell->resource_amount == 0) {
+        else if (cell->resource_amount == 0 && !building_get(map, x, y)) {
+            assert(cell->resource == NO_RESOURCE);
             found = false;
             for (int x2=(x ? x-1 : x); !found && x2<=min(x+1, map->size_x-1); x2++) {
                 for (int y2=(y ? y-1 : y); y2<=min(y+1, map->size_y-1); y2++) {
@@ -133,7 +153,8 @@ coordinate** map_grow_resources(struct Map *map) {
                 }
             }
         }
-
+        assert(cell->resource != NO_RESOURCE || cell->resource_amount == 0);
+        assert(cell->resource == NO_RESOURCE || cell->resource_amount != 0);
     }
     coord[actually_grown] = (coordinate*) NULL;
     return coord;
@@ -148,11 +169,8 @@ void map_grow_resources_on_game_tick(struct Game *game, struct Player *player) {
     if (*coord) {
         for (struct PlayerList *players = game->players; players; players=players->next)
                 for (struct CallbackList *callbacks = players->player->callbacks->map_change; callbacks; callbacks=callbacks->next)
-                    ((cb_map_change) callbacks->callback)(game, players->player, coord);
+                    ((cb_map_change) callbacks->callback)(game, players->player, (const coordinate**) coord);
     }
-    for (int i=0; coord[i]; i++)
-        free(coord[i]);
-    free(coord);
 }
 
 /**
