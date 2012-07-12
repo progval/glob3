@@ -188,6 +188,23 @@ float gui_get_camera_height(const struct Gui *gui) {
 }
 
 void gui_draw_terrain_on_camera(const struct Gui *gui, const struct Map *map, const coordinate x, const coordinate y, bool redraw);
+
+/**
+ * \brief Redraw close terrain recursively in order to prevent graphical glicthes.
+ * \see gui_draw_building_on_camera
+ */
+
+void gui_redraw_close_terrain_on_camera(const struct Gui *gui, const struct Map *map, const int x, const int y, const struct Terrain *cell) {
+    const int relative_x = x - gui->camera->x, relative_y = y - gui->camera->y;
+    SDL_Surface *background, *foreground;
+    SDL_Rect camera_coord;
+    for (int x2=x-1; x2>=0; x2--) {
+        for (int y2=y-1; y2>=0; y2--) {
+            gui_draw_terrain_on_camera(gui, map, x2, y2, false);
+        }
+    }
+}
+
 /**
  * \brief Draw a building on the camera.
  * \see gui_draw
@@ -210,6 +227,7 @@ void gui_draw_building_on_camera(const struct Gui *gui, const struct Map *map, c
             if (building->type == SWARM) {
                 camera_coord.x -= 5;
                 camera_coord.y -= GUI_TERRAIN_BORDER/2;
+                gui_redraw_close_terrain_on_camera(gui, map, relative_x, relative_y, &map->terrain[x*map->size_y + y]);
             }
             SDL_BlitSurface(surface, NULL, gui->screen, &camera_coord);
         }
@@ -238,35 +256,15 @@ void gui_draw_terrain_on_camera(const struct Gui *gui, const struct Map *map, co
             SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
             // Do not free the surface, it is cached.
 
-            if (redraw && relative_x>0) {
-                // Fix the left cell
-                camera_coord.x -= GUI_TERRAIN_BORDER;
-                foreground = gui_get_terrain_foreground(gui->screen->format, *(cell-map->size_y));
-                if (foreground)
-                    SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
-                camera_coord.x += GUI_TERRAIN_BORDER;
-            }
-            if (redraw && relative_y>0) {
-                // Fix the top cell
-                camera_coord.y -= GUI_TERRAIN_BORDER;
-                foreground = gui_get_terrain_foreground(gui->screen->format, *(cell-1));
-                if (foreground)
-                    SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
-                camera_coord.y += GUI_TERRAIN_BORDER;
-            }
-            if (redraw && relative_x>0 && relative_y>0) {
-                // Fix the top left cell
-                camera_coord.x -= GUI_TERRAIN_BORDER;
-                camera_coord.y -= GUI_TERRAIN_BORDER;
-                foreground = gui_get_terrain_foreground(gui->screen->format, *(cell-1-map->size_y));
-                if (foreground)
-                    SDL_BlitSurface(foreground, NULL, gui->screen, &camera_coord);
-            }
             if (redraw) {
-                struct BuildingList *swarms = map->buildings[SWARM];
-                while (swarms) {
-                    gui_draw_building_on_camera(gui, map, swarms->x, swarms->y, swarms->building);
-                    swarms = swarms->next;
+                gui_redraw_close_terrain_on_camera(gui, map, x, y, cell);
+                struct BuildingList *buildings;
+                for (int i=0; i<UNKNOWN_BUILDING; i++) {
+                    buildings = map->buildings[i];
+                    while (buildings) {
+                        gui_draw_building_on_camera(gui, map, buildings->x, buildings->y, buildings->building);
+                        buildings = buildings->next;
+                    }
                 }
             }
         }
@@ -459,14 +457,28 @@ void gui_on_game_tick(struct Game *game, struct Player *player) {
  */
 void gui_on_map_change(struct Game *game, struct Player *player, const coordinate** coord) {
     coordinate x, y;
+    struct Gui *gui = (struct Gui*) player->handler;
+    bool redraw_camera = false;
     for (int i=0; coord[i]; i++) {
         x = coord[i][0];
         y = coord[i][1];
-        gui_draw_terrain_on_camera((struct Gui*) player->handler, game->map, x, y, true);
-        gui_draw_terrain_on_minimap((struct Gui*) player->handler, game->map, x, y);
-        gui_draw_rectangle_on_minimap((struct Gui*) player->handler, game->map);
+        int relative_x = x - gui->camera->x, relative_y = y - gui->camera->y;
+        if (relative_x > 0 && relative_x < gui_get_camera_width(gui) && relative_y > 0 && relative_y < gui_get_camera_height(gui)) {
+            redraw_camera = true;
+            break;
+        }
     }
-    SDL_Flip(((struct Gui*) player->handler)->screen);
+    if (redraw_camera)
+        gui_draw(game, player);
+    else {
+        for (int i=0; coord[i]; i++) {
+            x = coord[i][0];
+            y = coord[i][1];
+            gui_draw_terrain_on_minimap((struct Gui*) player->handler, game->map, x, y);
+            gui_draw_rectangle_on_minimap((struct Gui*) player->handler, game->map);
+        }
+        SDL_Flip(gui->screen);
+    }
 }
 
 /**
